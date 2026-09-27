@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web IPTV & DRM Player</title>
+    
+    <!-- Shaka Player for DASH + DRM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.js"></script>
+    <!-- hls.js for HLS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.15/hls.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #0f1115; --bg2: #1a1d24; --bg3: #262b36;
+            --fg: #e6e9f0; --fg2: #9aa3b2; --accent: #3b82f6;
+            --border: #2c3040; --danger: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--fg); min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg2); padding: 16px 24px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        header h1 { font-size: 1.2rem; font-weight: 700; }
+
+        /* Main Layout */
+        .container {
+            display: grid; grid-template-columns: 1fr 380px;
+            flex: 1; overflow: hidden;
+        }
+
+        /* Video Area */
+        .video-area {
+            background: #000; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; position: relative;
+        }
+        video { width: 100%; height: 100%; max-height: 80vh; background: #000; }
+        .status {
+            position: absolute; bottom: 20px; left: 20px; right: 20px;
+            background: rgba(0,0,0,0.8); padding: 12px 20px; border-radius: 8px;
+            font-size: 0.9rem; text-align: center; display: none;
+        }
+        .status.error { color: #fca5a5; display: block; }
+        .status.info { color: #93c5fd; display: block; }
+
+        /* Sidebar Form */
+        .sidebar {
+            background: var(--bg2); border-left: 1px solid var(--border);
+            padding: 24px; overflow-y: auto;
+        }
+        .sidebar h2 { font-size: 1rem; margin-bottom: 20px; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 0.75rem; color: var(--fg2); margin-bottom: 6px; font-weight: 600; }
+        .field input, .field select, .field textarea {
+            width: 100%; padding: 10px 12px; background: var(--bg);
+            border: 1px solid var(--border); border-radius: 6px;
+            color: var(--fg); font-size: 0.85rem; outline: none;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+        .field textarea { resize: vertical; min-height: 60px; }
+        .field small { display: block; font-size: 0.7rem; color: var(--fg2); margin-top: 4px; }
+
+        .row { display: flex; gap: 10px; }
+        .row .field { flex: 1; }
+
+        button {
+            width: 100%; padding: 14px; background: var(--accent); color: #fff;
+            border: none; border-radius: 8px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; margin-top: 10px; transition: 0.2s;
+        }
+        button:hover { background: #2563eb; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .playlist-section { margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px; }
+        .playlist-section h3 { font-size: 0.85rem; margin-bottom: 10px; color: var(--fg2); }
+        .playlist-input { display: flex; gap: 8px; }
+        .playlist-input input { flex: 1; }
+        .playlist-input button { width: auto; margin: 0; padding: 10px 16px; font-size: 0.8rem; }
+
+        #channelList { margin-top: 15px; max-height: 200px; overflow-y: auto; }
+        .channel-item {
+            padding: 10px; border-bottom: 1px solid var(--border);
+            cursor: pointer; font-size: 0.85rem; transition: 0.2s;
+        }
+        .channel-item:hover { background: var(--bg3); }
+        .channel-item.active { background: var(--bg3); border-left: 3px solid var(--accent); }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📺 Web IPTV & DRM Player</h1>
+    <div style="font-size: 0.8rem; color: var(--fg2);">Proxy: <span id="proxyStatus" style="color: #ef4444;">Checking...</span></div>
+</header>
+
+<div class="container">
+    <!-- Video Area -->
+    <div class="video-area">
+        <video id="video" controls autoplay></video>
+        <div id="status" class="status"></div>
+    </div>
+
+    <!-- Sidebar Form -->
+    <div class="sidebar">
+        <h2>Stream Configuration</h2>
+        
+        <div class="field">
+            <label>Media Stream URL</label>
+            <textarea id="streamUrl" rows="3" placeholder="https://jiotvpllive.cdn.jio.com/.../index.mpd|cookie=...&drmScheme=clearkey&drmLicense=KEY:KEY"></textarea>
+        </div>
+
+        <div class="field">
+            <label>DRM Scheme</label>
+            <select id="drmScheme">
+                <option value="clearkey">ClearKey</option>
+                <option value="widevine">Widevine</option>
+                <option value="playready">PlayReady</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label>DRM License (KeyID:Key or URL)</label>
+            <input id="drmLicense" placeholder="bd1ea6a1c1fb5dcdb709434e0826bbc0:f57f22cba32739ce7beb1fab3f3d060b">
+        </div>
+
+        <div class="field">
+            <label>User Agent</label>
+            <input id="userAgent" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0">
+        </div>
+
+        <div class="field">
+            <label>Cookie</label>
+            <input id="cookie" placeholder="__hdnea__=st=...&exp=...">
+        </div>
+
+        <div class="field">
+            <label>Referer</label>
+            <input id="referer" placeholder="https://example.com">
+        </div>
+
+        <div class="field">
+            <label>Origin</label>
+            <input id="origin" placeholder="https://example.com">
+        </div>
+
+        <div class="field">
+            <label>Extra Headers (JSON)</label>
+            <textarea id="extraHeaders" rows="2" placeholder='{"Authorization": "Bearer token"}'></textarea>
+        </div>
+
+        <button id="playBtn">▶ PLAY STREAM</button>
+
+        <div class="playlist-section">
+            <h3>Load M3U Playlist</h3>
+            <div class="playlist-input">
+                <input id="playlistUrl" placeholder="https://example.com/playlist.m3u">
+                <button id="loadPlaylistBtn">Load</button>
+            </div>
+            <div id="channelList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── DOM Elements ──
+    const $ = (id) => document.getElementById(id);
+    const video = $('video');
+    const statusEl = $('status');
+    const proxyStatus = $('proxyStatus');
+
+    let shakaPlayer = null;
+    let hlsInstance = null;
+    let currentStreamId = null;
+
+    // ── Check Proxy Status ──
+    fetch('http://localhost:3000/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: 'test', headers: {} })
+    }).then(() => {
+        proxyStatus.textContent = 'Connected ✅';
+        proxyStatus.style.color = '#22c55e';
+    }).catch(() => {
+        proxyStatus.textContent = 'Offline ❌ (Run node proxy-server.js)';
+        proxyStatus.style.color = '#ef4444';
+    });
+
+    // ── Status Helper ──
+    function showStatus(msg, type = 'info') {
+        statusEl.textContent = msg;
+        statusEl.className = `status ${type}`;
+    }
+
+    // ── Parse Piped URL Options ──
+    function parseStreamUrl(rawUrl) {
+        const result = { url: rawUrl, headers: {}, drmScheme: '', drmLicense: '' };
+        const pipeIndex = rawUrl.indexOf('|');
+        if (pipeIndex === -1) return result;
+
+        result.url = rawUrl.slice(0, pipeIndex).trim();
+        const optionsStr = rawUrl.slice(pipeIndex + 1);
+
+        // Extract known keys
+        const keys = ['cookie', 'user', 'drmScheme', 'drmLicense', 'referer', 'origin'];
+        let remaining = optionsStr;
+
+        keys.forEach(key => {
+            const regex = new RegExp(`${key}=([^&]*)`, 'i');
+            const match = remaining.match(regex);
+            if (match) {
+                const value = match[1].trim();
+                if (key === 'cookie') result.headers['Cookie'] = value;
+                else if (key === 'user') result.headers['User-Agent'] = value;
+                else if (key === 'referer') result.headers['Referer'] = value;
+                else if (key === 'origin') result.headers['Origin'] = value;
+                else if (key === 'drmScheme') result.drmScheme = value.toLowerCase();
+                else if (key === 'drmLicense') result.drmLicense = value;
+                
+                // Remove matched part to avoid re-matching
+                remaining = remaining.replace(match[0], '');
+            }
+        });
+
+        return result;
+    }
+
+    // ── Main Play Function ──
+    async function playStream() {
+        const rawUrl = $('streamUrl').value.trim();
+        if (!rawUrl) return showStatus('Please enter a stream URL', 'error');
+
+        showStatus('Parsing URL...', 'info');
+        const parsed = parseStreamUrl(rawUrl);
+
+        // Override with manual form inputs if provided
+        const formHeaders = {};
+        if ($('cookie').value.trim()) formHeaders['Cookie'] = $('cookie').value.trim();
+        if ($('userAgent').value.trim()) formHeaders['User-Agent'] = $('userAgent').value.trim();
+        if ($('referer').value.trim()) formHeaders['Referer'] = $('referer').value.trim();
+        if ($('origin').value.trim()) formHeaders['Origin'] = $('origin').value.trim();
+        
+        const extraHeadersStr = $('extraHeaders').value.trim();
+        if (extraHeadersStr) {
+            try {
+                Object.assign(formHeaders, JSON.parse(extraHeadersStr));
+            } catch (e) {
+                return showStatus('Invalid JSON in Extra Headers', 'error');
+            }
+        }
+
+        // Merge parsed and form headers (form takes precedence)
+        const finalHeaders = { ...parsed.headers, ...formHeaders };
+
+        // Get DRM info (form overrides URL)
+        const finalDrmScheme = $('drmScheme').value || parsed.drmScheme;
+        const finalDrmLicense = $('drmLicense').value.trim() || parsed.drmLicense;
+
+        // Register stream with proxy
+        showStatus('Registering with proxy...', 'info');
+        let streamId;
+        try {
+            const regRes = await fetch('http://localhost:3000/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: parsed.url, headers: finalHeaders })
+            });
+            const data = await regRes.json();
+            streamId = data.streamId;
+            currentStreamId = streamId;
+        } catch (err) {
+            return showStatus('Proxy server is not running. Please run "node proxy-server.js"', 'error');
+        }
+
+        // Build proxied URL
+        const proxiedUrl = `http://localhost:3000/proxy?streamId=${streamId}&url=${encodeURIComponent(parsed.url)}`;
+        
+        showStatus('Loading manifest...', 'info');
+
+        // Destroy previous players
+        if (shakaPlayer) { shakaPlayer.destroy(); shakaPlayer = null; }
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+        const isDash = parsed.url.includes('.mpd');
+        const isHls = parsed.url.includes('.m3u8');
+
+        try {
+            if (isDash) {
+                // Shaka Player for DASH
+                shaka.polyfill.installAll();
+                shakaPlayer = new shaka.Player(video);
+
+                // Configure ClearKey
+                if (finalDrmScheme === 'clearkey' && finalDrmLicense) {
+                    const [kid, key] = finalDrmLicense.split(':');
+                    shakaPlayer.configure({
+                        drm: { clearKeys: { [kid.trim()]: key.trim() } }
+                    });
+                    console.log('ClearKey configured:', kid, key);
+                }
+
+                await shakaPlayer.load(proxiedUrl);
+                video.play();
+                showStatus('Playing DASH stream...', 'info');
+                setTimeout(() => statusEl.style.display = 'none', 3000);
+
+            } else if (isHls) {
+                // hls.js for HLS
+                if (Hls.isSupported()) {
+                    hlsInstance = new Hls();
+                    hlsInstance.loadSource(proxiedUrl);
+                    hlsInstance.attachMedia(video);
+                    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                        video.play();
+                        showStatus('Playing HLS stream...', 'info');
+                        setTimeout(() => statusEl.style.display = 'none', 3000);
+                    });
+                } else {
+                    video.src = proxiedUrl;
+                    video.play();
+                }
+            } else {
+                video.src = proxiedUrl;
+                video.play();
+                showStatus('Playing native stream...', 'info');
+                setTimeout(() => statusEl.style.display = 'none', 3000);
+            }
+        } catch (err) {
+            console.error(err);
+            showStatus('Playback Error: ' + (err.message || 'Check console for details'), 'error');
+        }
+    }
+
+    // ── Playlist Loader ──
+    async function loadPlaylist() {
+        const url = $('playlistUrl').value.trim();
+        if (!url) return;
+
+        showStatus('Loading playlist...', 'info');
+        try {
+            const res = await fetch(url);
+            const text = await res.text();
+            
+            // Parse M3U
+            const lines = text.split('\n');
+            const channels = [];
+            let current = null;
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const name = line.substring(line.lastIndexOf(',') + 1).trim();
+                    current = { name, url: '' };
+                } else if (line && !line.startsWith('#') && current) {
+                    current.url = line;
+                    channels.push(current);
+                    current = null;
+                }
+            });
+
+            if (channels.length === 0) return showStatus('No channels found in playlist', 'error');
+
+            // Render channels
+            const listEl = $('channelList');
+            listEl.innerHTML = channels.map((ch, i) => 
+                `<div class="channel-item" data-index="${i}">${ch.name}</div>`
+            ).join('');
+
+            listEl.querySelectorAll('.channel-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const ch = channels[el.dataset.index];
+                    $('streamUrl').value = ch.url;
+                    playStream();
+                });
+            });
+
+            showStatus(`Loaded ${channels.length} channels`, 'info');
+            setTimeout(() => statusEl.style.display = 'none', 3000);
+
+        } catch (err) {
+            showStatus('Failed to load playlist: ' + err.message, 'error');
+        }
+    }
+
+    // ── Event Listeners ──
+    $('playBtn').addEventListener('click', playStream);
+    $('loadPlaylistBtn').addEventListener('click', loadPlaylist);
+
+    // Auto-fill the JioTV URL for testing
+    $('streamUrl').value = 'https://jiotvpllive.cdn.jio.com/bpk-tv/StarSportsHD2Hin_BTS/WDVLive/index.mpd|cookie=__hdnea__=st=1790494202~exp=1790515802~acl=/bpk-tv/StarSportsHD2Hin_BTS/WDVLive/*~hmac=b83d5fad7e3904a3d5bbeadccfff5ff975f6da82c06876fadd16836c7ae19ffa&user=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0&drmScheme=clearkey&drmLicense=bd1ea6a1c1fb5dcdb709434e0826bbc0:f57f22cba32739ce7beb1fab3f3d060b';
+</script>
+</body>
+</html>
