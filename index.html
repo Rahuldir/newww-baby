@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web IPTV & DRM Player</title>
     
-    <!-- Shaka Player for DASH + DRM -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.js"></script>
-    <!-- hls.js for HLS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.15/hls.min.js"></script>
 
     <style>
@@ -22,60 +20,31 @@
             background: var(--bg); color: var(--fg); min-height: 100vh;
             display: flex; flex-direction: column;
         }
-
-        /* Header */
         header {
             background: var(--bg2); padding: 16px 24px; border-bottom: 1px solid var(--border);
             display: flex; align-items: center; justify-content: space-between;
         }
         header h1 { font-size: 1.2rem; font-weight: 700; }
-
-        /* Main Layout */
-        .container {
-            display: grid; grid-template-columns: 1fr 380px;
-            flex: 1; overflow: hidden;
-        }
-
-        /* Video Area */
-        .video-area {
-            background: #000; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; position: relative;
-        }
+        .container { display: grid; grid-template-columns: 1fr 450px; flex: 1; overflow: hidden; }
+        .video-area { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         video { width: 100%; height: 100%; max-height: 80vh; background: #000; }
-        .status {
-            position: absolute; bottom: 20px; left: 20px; right: 20px;
-            background: rgba(0,0,0,0.8); padding: 12px 20px; border-radius: 8px;
-            font-size: 0.9rem; text-align: center; display: none;
-        }
+        .status { position: absolute; bottom: 20px; left: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; text-align: center; display: none; }
         .status.error { color: #fca5a5; display: block; }
         .status.info { color: #93c5fd; display: block; }
 
-        /* Sidebar Form */
-        .sidebar {
-            background: var(--bg2); border-left: 1px solid var(--border);
-            padding: 24px; overflow-y: auto;
-        }
+        .sidebar { background: var(--bg2); border-left: 1px solid var(--border); padding: 24px; overflow-y: auto; }
         .sidebar h2 { font-size: 1rem; margin-bottom: 20px; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .field { margin-bottom: 16px; }
-        .field label { display: block; font-size: 0.75rem; color: var(--fg2); margin-bottom: 6px; font-weight: 600; }
-        .field input, .field select, .field textarea {
-            width: 100%; padding: 10px 12px; background: var(--bg);
-            border: 1px solid var(--border); border-radius: 6px;
-            color: var(--fg); font-size: 0.85rem; outline: none;
-        }
+        .field { margin-bottom: 14px; }
+        .field label { display: block; font-size: 0.75rem; color: var(--fg2); margin-bottom: 4px; font-weight: 600; }
+        .field input, .field select, .field textarea { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); font-size: 0.85rem; outline: none; }
         .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
-        .field textarea { resize: vertical; min-height: 60px; }
-        .field small { display: block; font-size: 0.7rem; color: var(--fg2); margin-top: 4px; }
-
+        .field textarea { resize: vertical; min-height: 50px; }
+        .field small { display: block; font-size: 0.65rem; color: var(--fg2); margin-top: 2px; }
         .row { display: flex; gap: 10px; }
         .row .field { flex: 1; }
 
-        button {
-            width: 100%; padding: 14px; background: var(--accent); color: #fff;
-            border: none; border-radius: 8px; font-size: 1rem; font-weight: 700;
-            cursor: pointer; margin-top: 10px; transition: 0.2s;
-        }
+        button { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 10px; transition: 0.2s; }
         button:hover { background: #2563eb; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -86,13 +55,9 @@
         .playlist-input button { width: auto; margin: 0; padding: 10px 16px; font-size: 0.8rem; }
 
         #channelList { margin-top: 15px; max-height: 200px; overflow-y: auto; }
-        .channel-item {
-            padding: 10px; border-bottom: 1px solid var(--border);
-            cursor: pointer; font-size: 0.85rem; transition: 0.2s;
-        }
+        .channel-item { padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
         .channel-item:hover { background: var(--bg3); }
         .channel-item.active { background: var(--bg3); border-left: 3px solid var(--accent); }
-
     </style>
 </head>
 <body>
@@ -103,24 +68,35 @@
 </header>
 
 <div class="container">
-    <!-- Video Area -->
     <div class="video-area">
         <video id="video" controls autoplay></video>
         <div id="status" class="status"></div>
     </div>
 
-    <!-- Sidebar Form -->
     <div class="sidebar">
         <h2>Stream Configuration</h2>
         
         <div class="field">
-            <label>Media Stream URL</label>
-            <textarea id="streamUrl" rows="3" placeholder="https://jiotvpllive.cdn.jio.com/.../index.mpd|cookie=...&drmScheme=clearkey&drmLicense=KEY:KEY"></textarea>
+            <label>Video Name</label>
+            <input id="videoName" placeholder="Enter video name">
         </div>
 
         <div class="field">
-            <label>DRM Scheme</label>
+            <label>Media Stream URL</label>
+            <textarea id="streamUrl" rows="3" placeholder="https://.../index.mpd|cookie=...&drmScheme=clearkey&drmLicense=KEY:KEY"></textarea>
+            <small>File video: MP4, MOV, MKV, AVI, 3GP, WebM. Streaming: M3U8, MPD, TS.</small>
+        </div>
+
+        <div class="field">
+            <label>DRM License (optional)</label>
+            <input id="drmLicense" placeholder="KEYID:KEY or https://license-url">
+            <small>Supported formats: TEXT, kid:key, JSON, HTTP, HTTPS. Separate multiple keys with comma (,).</small>
+        </div>
+
+        <div class="field">
+            <label>DRM Scheme (optional)</label>
             <select id="drmScheme">
+                <option value="">Auto-detect</option>
                 <option value="clearkey">ClearKey</option>
                 <option value="widevine">Widevine</option>
                 <option value="playready">PlayReady</option>
@@ -128,8 +104,33 @@
         </div>
 
         <div class="field">
-            <label>DRM License (KeyID:Key or URL)</label>
-            <input id="drmLicense" placeholder="bd1ea6a1c1fb5dcdb709434e0826bbc0:f57f22cba32739ce7beb1fab3f3d060b">
+            <label>Manifest type (optional)</label>
+            <select id="manifestType">
+                <option value="">Auto-detect</option>
+                <option value="dash">DASH</option>
+                <option value="hls">HLS</option>
+                <option value="ss">SmoothStreaming</option>
+            </select>
+            <small>Sometimes certain videos require a specific manifest type.</small>
+        </div>
+
+        <div class="field">
+            <label>DRM Key Encoding (Optional)</label>
+            <select id="drmKeyEncoding">
+                <option value="default">Default (Hex)</option>
+                <option value="base64">Base64</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label>DNS over HTTPS (DoH) Endpoint (optional)</label>
+            <input id="dohEndpoint" placeholder="https://cloudflare-dns.com/dns-query">
+            <small>Leave blank if unsure. Invalid DNS may prevent playback.</small>
+        </div>
+
+        <div class="field">
+            <label>Referer Value (optional)</label>
+            <input id="referer" placeholder="https://example.com">
         </div>
 
         <div class="field">
@@ -138,23 +139,24 @@
         </div>
 
         <div class="field">
-            <label>Cookie</label>
-            <input id="cookie" placeholder="__hdnea__=st=...&exp=...">
-        </div>
-
-        <div class="field">
-            <label>Referer</label>
-            <input id="referer" placeholder="https://example.com">
-        </div>
-
-        <div class="field">
-            <label>Origin</label>
+            <label>Origin Value (optional)</label>
             <input id="origin" placeholder="https://example.com">
         </div>
 
         <div class="field">
-            <label>Extra Headers (JSON)</label>
-            <textarea id="extraHeaders" rows="2" placeholder='{"Authorization": "Bearer token"}'></textarea>
+            <label>Authorization (optional)</label>
+            <input id="authorization" placeholder="Bearer <access_token>">
+        </div>
+
+        <div class="field">
+            <label>Cookie Value (optional)</label>
+            <input id="cookie" placeholder="name=user;app=max;id=value">
+        </div>
+
+        <div class="field">
+            <label>Extra Header (optional)</label>
+            <textarea id="extraHeaders" rows="2" placeholder='{"userId":"react-jw-player","sessionId":"123456789"}'></textarea>
+            <small>Must be in JSON format.</small>
         </div>
 
         <button id="playBtn">▶ PLAY STREAM</button>
@@ -171,7 +173,6 @@
 </div>
 
 <script>
-    // ── DOM Elements ──
     const $ = (id) => document.getElementById(id);
     const video = $('video');
     const statusEl = $('status');
@@ -179,9 +180,8 @@
 
     let shakaPlayer = null;
     let hlsInstance = null;
-    let currentStreamId = null;
 
-    // ── Check Proxy Status ──
+    // Check Proxy Status
     fetch('http://localhost:3000/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,13 +194,12 @@
         proxyStatus.style.color = '#ef4444';
     });
 
-    // ── Status Helper ──
     function showStatus(msg, type = 'info') {
         statusEl.textContent = msg;
         statusEl.className = `status ${type}`;
     }
 
-    // ── Parse Piped URL Options ──
+    // Parse Piped URL Options
     function parseStreamUrl(rawUrl) {
         const result = { url: rawUrl, headers: {}, drmScheme: '', drmLicense: '' };
         const pipeIndex = rawUrl.indexOf('|');
@@ -209,7 +208,6 @@
         result.url = rawUrl.slice(0, pipeIndex).trim();
         const optionsStr = rawUrl.slice(pipeIndex + 1);
 
-        // Extract known keys
         const keys = ['cookie', 'user', 'drmScheme', 'drmLicense', 'referer', 'origin'];
         let remaining = optionsStr;
 
@@ -224,16 +222,24 @@
                 else if (key === 'origin') result.headers['Origin'] = value;
                 else if (key === 'drmScheme') result.drmScheme = value.toLowerCase();
                 else if (key === 'drmLicense') result.drmLicense = value;
-                
-                // Remove matched part to avoid re-matching
                 remaining = remaining.replace(match[0], '');
             }
         });
-
         return result;
     }
 
-    // ── Main Play Function ──
+    // Base64 to Hex Converter for DRM Key Encoding
+    function base64ToHex(base64) {
+        try {
+            const binary = atob(base64);
+            let hex = '';
+            for (let i = 0; i < binary.length; i++) {
+                hex += binary.charCodeAt(i).toString(16).padStart(2, '0');
+            }
+            return hex;
+        } catch (e) { return base64; }
+    }
+
     async function playStream() {
         const rawUrl = $('streamUrl').value.trim();
         if (!rawUrl) return showStatus('Please enter a stream URL', 'error');
@@ -241,28 +247,31 @@
         showStatus('Parsing URL...', 'info');
         const parsed = parseStreamUrl(rawUrl);
 
-        // Override with manual form inputs if provided
+        // Build headers from form
         const formHeaders = {};
         if ($('cookie').value.trim()) formHeaders['Cookie'] = $('cookie').value.trim();
         if ($('userAgent').value.trim()) formHeaders['User-Agent'] = $('userAgent').value.trim();
         if ($('referer').value.trim()) formHeaders['Referer'] = $('referer').value.trim();
         if ($('origin').value.trim()) formHeaders['Origin'] = $('origin').value.trim();
+        if ($('authorization').value.trim()) formHeaders['Authorization'] = $('authorization').value.trim();
         
         const extraHeadersStr = $('extraHeaders').value.trim();
         if (extraHeadersStr) {
-            try {
-                Object.assign(formHeaders, JSON.parse(extraHeadersStr));
-            } catch (e) {
-                return showStatus('Invalid JSON in Extra Headers', 'error');
-            }
+            try { Object.assign(formHeaders, JSON.parse(extraHeadersStr)); } 
+            catch (e) { return showStatus('Invalid JSON in Extra Headers', 'error'); }
         }
 
-        // Merge parsed and form headers (form takes precedence)
         const finalHeaders = { ...parsed.headers, ...formHeaders };
-
-        // Get DRM info (form overrides URL)
         const finalDrmScheme = $('drmScheme').value || parsed.drmScheme;
-        const finalDrmLicense = $('drmLicense').value.trim() || parsed.drmLicense;
+        const finalManifestType = $('manifestType').value;
+        const finalDoh = $('dohEndpoint').value.trim();
+
+        // Handle DRM Key Encoding
+        let finalDrmLicense = $('drmLicense').value.trim() || parsed.drmLicense;
+        if ($('drmKeyEncoding').value === 'base64' && finalDrmLicense.includes(':')) {
+            const [kid, key] = finalDrmLicense.split(':');
+            finalDrmLicense = `${base64ToHex(kid.trim())}:${base64ToHex(key.trim())}`;
+        }
 
         // Register stream with proxy
         showStatus('Registering with proxy...', 'info');
@@ -271,49 +280,38 @@
             const regRes = await fetch('http://localhost:3000/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: parsed.url, headers: finalHeaders })
+                body: JSON.stringify({ url: parsed.url, headers: finalHeaders, dohEndpoint: finalDoh })
             });
             const data = await regRes.json();
             streamId = data.streamId;
-            currentStreamId = streamId;
         } catch (err) {
             return showStatus('Proxy server is not running. Please run "node proxy-server.js"', 'error');
         }
 
-        // Build proxied URL
         const proxiedUrl = `http://localhost:3000/proxy?streamId=${streamId}&url=${encodeURIComponent(parsed.url)}`;
-        
         showStatus('Loading manifest...', 'info');
 
-        // Destroy previous players
         if (shakaPlayer) { shakaPlayer.destroy(); shakaPlayer = null; }
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 
-        const isDash = parsed.url.includes('.mpd');
-        const isHls = parsed.url.includes('.m3u8');
+        const isDash = finalManifestType === 'dash' || (!finalManifestType && parsed.url.includes('.mpd'));
+        const isHls = finalManifestType === 'hls' || (!finalManifestType && parsed.url.includes('.m3u8'));
 
         try {
             if (isDash) {
-                // Shaka Player for DASH
                 shaka.polyfill.installAll();
                 shakaPlayer = new shaka.Player(video);
 
-                // Configure ClearKey
                 if (finalDrmScheme === 'clearkey' && finalDrmLicense) {
                     const [kid, key] = finalDrmLicense.split(':');
-                    shakaPlayer.configure({
-                        drm: { clearKeys: { [kid.trim()]: key.trim() } }
-                    });
-                    console.log('ClearKey configured:', kid, key);
+                    shakaPlayer.configure({ drm: { clearKeys: { [kid.trim()]: key.trim() } } });
                 }
 
                 await shakaPlayer.load(proxiedUrl);
                 video.play();
                 showStatus('Playing DASH stream...', 'info');
                 setTimeout(() => statusEl.style.display = 'none', 3000);
-
             } else if (isHls) {
-                // hls.js for HLS
                 if (Hls.isSupported()) {
                     hlsInstance = new Hls();
                     hlsInstance.loadSource(proxiedUrl);
@@ -335,21 +333,17 @@
             }
         } catch (err) {
             console.error(err);
-            showStatus('Playback Error: ' + (err.message || 'Check console for details'), 'error');
+            showStatus('Playback Error: ' + (err.message || 'Check console'), 'error');
         }
     }
 
-    // ── Playlist Loader ──
     async function loadPlaylist() {
         const url = $('playlistUrl').value.trim();
         if (!url) return;
-
         showStatus('Loading playlist...', 'info');
         try {
             const res = await fetch(url);
             const text = await res.text();
-            
-            // Parse M3U
             const lines = text.split('\n');
             const channels = [];
             let current = null;
@@ -366,35 +360,27 @@
                 }
             });
 
-            if (channels.length === 0) return showStatus('No channels found in playlist', 'error');
+            if (channels.length === 0) return showStatus('No channels found', 'error');
 
-            // Render channels
             const listEl = $('channelList');
-            listEl.innerHTML = channels.map((ch, i) => 
-                `<div class="channel-item" data-index="${i}">${ch.name}</div>`
-            ).join('');
-
+            listEl.innerHTML = channels.map((ch, i) => `<div class="channel-item" data-index="${i}">${ch.name}</div>`).join('');
             listEl.querySelectorAll('.channel-item').forEach(el => {
                 el.addEventListener('click', () => {
-                    const ch = channels[el.dataset.index];
-                    $('streamUrl').value = ch.url;
+                    $('streamUrl').value = channels[el.dataset.index].url;
                     playStream();
                 });
             });
-
             showStatus(`Loaded ${channels.length} channels`, 'info');
             setTimeout(() => statusEl.style.display = 'none', 3000);
-
         } catch (err) {
             showStatus('Failed to load playlist: ' + err.message, 'error');
         }
     }
 
-    // ── Event Listeners ──
     $('playBtn').addEventListener('click', playStream);
     $('loadPlaylistBtn').addEventListener('click', loadPlaylist);
 
-    // Auto-fill the JioTV URL for testing
+    // Auto-fill the JioTV URL for testing (matching your provided link)
     $('streamUrl').value = 'https://jiotvpllive.cdn.jio.com/bpk-tv/StarSportsHD2Hin_BTS/WDVLive/index.mpd|cookie=__hdnea__=st=1790494202~exp=1790515802~acl=/bpk-tv/StarSportsHD2Hin_BTS/WDVLive/*~hmac=b83d5fad7e3904a3d5bbeadccfff5ff975f6da82c06876fadd16836c7ae19ffa&user=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0&drmScheme=clearkey&drmLicense=bd1ea6a1c1fb5dcdb709434e0826bbc0:f57f22cba32739ce7beb1fab3f3d060b';
 </script>
 </body>
