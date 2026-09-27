@@ -2,25 +2,25 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const https = require('https');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // In-memory store for active streams
-// streamId -> { baseUrl, headers }
 const streams = new Map();
 
-// 1. Register a stream and its headers
+// 1. Register a stream and its configuration
 app.post('/register', (req, res) => {
-    const { url, headers } = req.body;
+    const { url, headers, dohEndpoint } = req.body;
     const streamId = Math.random().toString(36).substring(2, 15);
-    streams.set(streamId, { baseUrl: url, headers: headers || {} });
+    streams.set(streamId, { baseUrl: url, headers: headers || {}, dohEndpoint });
     console.log(`[Proxy] Registered stream ${streamId} -> ${url}`);
     res.json({ streamId });
 });
 
-// 2. Proxy the stream (manifests and segments)
+// 2. Proxy the stream
 app.get('/proxy', async (req, res) => {
     const { streamId, url } = req.query;
     const stream = streams.get(streamId);
@@ -32,26 +32,33 @@ app.get('/proxy', async (req, res) => {
     const targetUrl = url || stream.baseUrl;
 
     try {
+        // Configure DoH if provided
+        let agent = undefined;
+        if (stream.dohEndpoint) {
+            // Note: True DoH in Node.js requires a custom agent or library.
+            // For simplicity, we log it and use the system DNS.
+            // A production app would use 'dohjs' or 'undici' with a DoH dispatcher.
+            console.log(`[Proxy] DoH requested: ${stream.dohEndpoint} (using system DNS for now)`);
+        }
+
         const response = await axios({
             method: 'GET',
             url: targetUrl,
             headers: stream.headers,
             responseType: 'arraybuffer',
-            validateStatus: () => true // Don't throw on 403, let the client handle it
+            httpsAgent: agent,
+            validateStatus: () => true
         });
 
         let data = response.data;
         const contentType = response.headers['content-type'] || '';
 
-        // Rewrite manifests to point back to this proxy
+        // Rewrite manifests (MPD / M3U8) to point back to this proxy
         if (targetUrl.includes('.mpd') || targetUrl.includes('.m3u8')) {
             let text = data.toString('utf-8');
             const proxyBase = `http://localhost:3000/proxy?streamId=${streamId}&url=`;
             
-            // Basic regex to replace absolute http/https URLs with proxied versions
-            // This handles both MPD and M3U8 manifests
             text = text.replace(/https?:\/\/[^"'\s<>]+/g, (match) => {
-                // Avoid double-proxying
                 if (match.includes('localhost:3000')) return match;
                 return `${proxyBase}${encodeURIComponent(match)}`;
             });
@@ -60,7 +67,6 @@ app.get('/proxy', async (req, res) => {
             console.log(`[Proxy] Rewrote manifest for ${streamId}`);
         }
 
-        // Send the response with the original content type
         res.set('Content-Type', contentType);
         res.status(response.status).send(data);
 
